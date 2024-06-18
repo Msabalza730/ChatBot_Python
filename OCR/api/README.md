@@ -34,5 +34,6 @@ You can see the JSON Response with the text extracted from the file.
 
   
 - Test  PDF file
-  ![image](https://github.com/Msabalza730/ChatBot_Python/assets/55921624/c5c32720-16b6-4820-ae32-b9dd438be8f2)
+  ![image](https://github.com/Msabalza730/ChatBot_Python/assets/55921624/ffd71105-862e-439e-9eb1-ffe68ab3be35)
+
 
