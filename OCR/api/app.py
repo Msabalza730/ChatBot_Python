@@ -27,7 +27,7 @@ def ocr_image(image_path, preprocess='thresh'):
     filename = "{}.png".format(os.getpid())
     cv2.imwrite(filename, gray)
 
-    text = pytesseract.image_to_string(Image.open(filename))
+    text = pytesseract.image_to_string(Image.open(filename), lang='spa')
 
     os.remove(filename)
 
