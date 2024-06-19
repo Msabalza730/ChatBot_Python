@@ -8,6 +8,15 @@ Tutorial: https://pyimagesearch.com/2017/07/10/using-tesseract-ocr-python/
     - python3 -m venv env
     - source bin/activate
 ```
+
+- Install in your local:
+```
+    -   sudo apt-get install tesseract-ocr -y      
+    -   sudo apt-get install tesseract-ocr-spa -y
+    -   tesseract --list-langs                    #check your languages 
+    -   pip install requests
+```
+
 - Install the library:
 
 ```python
