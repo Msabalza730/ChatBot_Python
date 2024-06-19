@@ -1,20 +1,17 @@
 import os
 
 import cv2
-import numpy as np
 import pytesseract
 from flask import Flask, jsonify, request
-from pdf2image import convert_from_path, pdfinfo_from_path
-from pdf2image.exceptions import PDFInfoNotInstalledError, PDFPageCountError
+from pdf2image import convert_from_path
 from PIL import Image
+import requests
+import tempfile
 
 app = Flask(__name__)
 
 
-def allowed_file(filename):
-    """This function is to upload files (images or pdf)"""
-    allowed_extensions = {'png', 'jpg', 'jpeg', 'tiff', 'pdf'}
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
 
 
 def ocr_image(image_path, preprocess='thresh'):
@@ -51,39 +48,48 @@ def get_text():
         -Delete the temporary file
         -Return the extracted text as a JSON response
     """
+    if not request.json or 'file_url' not in request.json:
+        return jsonify({'message': 'No URL provided'}), 400
 
-    if 'file' not in request.files:
-        return jsonify({'message': 'No file provided'}), 400
+    file_url = request.json['file_url']
+    preprocess = request.json.get('preprocess', 'thresh')
 
-    file = request.files['file']
-    
-    if not allowed_file(file.filename):
+    try:
+        response = requests.get(file_url)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        return jsonify({'message': str(e)}), 400
+
+    _, file_extension = os.path.splitext(file_url)
+    file_extension = file_extension.lower().strip('.')
+
+    if file_extension not in ALLOWED_EXTENSIONS:
         return jsonify({'message': 'File type not allowed'}), 400
-    
-    file_path = os.path.join('/tmp', file.filename)
-    file.save(file_path)
 
-    preprocess = request.form.get('preprocess', 'thresh')
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as temp_file:
+        temp_file.write(response.content)
+        temp_file_path = temp_file.name
+
     text = ""
 
-    if file.filename.lower().endswith('.pdf'):
+    if file_extension == 'pdf':
         try:
-            images = convert_from_path(file_path)
+            images = convert_from_path(temp_file_path)
             for i, image in enumerate(images):
-                temp_image_path = f"/tmp/page_{i}.png"
-                image.save(temp_image_path, 'PNG')
-                text += ocr_image(temp_image_path, preprocess) + "\n"
-                os.remove(temp_image_path)
-        except (PDFInfoNotInstalledError, PDFPageCountError) as e:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_image_file:
+                    image.save(temp_image_file.name, 'PNG')
+                    text += ocr_image(temp_image_file.name, preprocess) + "\n"
+                    os.remove(temp_image_file.name)
+        except Exception as e:
+            os.remove(temp_file_path)
             return jsonify({'message': str(e)}), 500
     else:
-        text = ocr_image(file_path, preprocess)
+        text = ocr_image(temp_file_path, preprocess)
 
-
-    os.remove(file_path)
+    os.remove(temp_file_path)
 
     response = {'message': 'success', 'text': text}
     return jsonify(response)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
